@@ -61,5 +61,27 @@ ignored by default; commit only small `.example.csv` files when needed.
 uv run python -m src.ms_signet.train --config configs/ms_signet_hansig.yaml
 ```
 
+Each training run writes a self-contained experiment directory:
+
+```text
+outputs/runs/ms_signet_hansig/YYYY-MM-DD_HHMMSS/
+├── config.yaml
+├── run.json
+├── checkpoints/
+│   ├── epoch_001.pth
+│   ├── latest.pth
+│   └── best.pth
+├── metrics/
+│   ├── latest_train.json
+│   └── train_history.json
+├── predictions/
+├── logs/
+│   └── train.log
+└── embeddings/
+```
+
+Use `outputs/runs/` for regular experiments. Keep `models/` only for manually
+selected release/export weights. Both directories are ignored by git.
+
 The v1 pipeline assumes cropped offline signatures. Detection, restoration, and
 document-level workflows can be added later as separate methods under `src/`.

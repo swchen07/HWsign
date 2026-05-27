@@ -1,6 +1,11 @@
 seed: 11
 device: auto
 
+run:
+  name: ms_signet_hansig
+  output_dir: outputs/runs
+  save_best: true
+
 data:
   root: datasets/raw/HanSig
   train_manifest: datasets/manifests/hansig_train.csv
@@ -21,5 +26,5 @@ train:
   epsilon: 0.2
   branch_weight: 1.0
   amp: false
-  checkpoint_dir: checkpoints/ms_signet_hansig
+  checkpoint_dir: null
   log_interval: 20

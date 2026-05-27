@@ -16,6 +16,7 @@ datasets/**/*.heic
 datasets/**/*.part
 checkpoints/
 outputs/
+models/
 runs/
 logs/
 *.ckpt

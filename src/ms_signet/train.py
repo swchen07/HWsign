@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import math
 
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.common.run import append_log_line, create_run_layout, write_json
 from src.common.utils import ensure_dir, load_yaml, resolve_device, seed_everything
 from src.ms_signet.loss import MultiBranchCoTupletLoss
 from src.ms_signet.model import MSSigNet
@@ -73,7 +75,24 @@ def main() -> None:
     scaler = torch.cuda.amp.GradScaler(
         enabled=bool(train_config.get("amp", False)) and device.type == "cuda"
     )
-    checkpoint_dir = ensure_dir(train_config.get("checkpoint_dir", "checkpoints/ms_signet_hansig"))
+
+    if train_config.get("checkpoint_dir"):
+        checkpoint_dir = ensure_dir(train_config["checkpoint_dir"])
+        run_paths = {
+            "run_dir": checkpoint_dir.parent,
+            "checkpoints": checkpoint_dir,
+            "metrics": ensure_dir(checkpoint_dir.parent / "metrics"),
+            "logs": ensure_dir(checkpoint_dir.parent / "logs"),
+        }
+    else:
+        run_paths = create_run_layout(config, config_path=args.config)
+        checkpoint_dir = run_paths["checkpoints"]
+
+    save_best = bool(config.get("run", {}).get("save_best", True))
+    train_log = run_paths["logs"] / "train.log"
+    history: list[dict[str, float | int | str]] = []
+    best_loss = math.inf
+    print(f"run_dir={run_paths['run_dir']}")
 
     for epoch in range(1, int(train_config.get("epochs", 90)) + 1):
         model.train()
@@ -102,17 +121,34 @@ def main() -> None:
             if step % int(train_config.get("log_interval", 20)) == 0:
                 progress.set_postfix(loss=running_loss / step)
 
-        checkpoint_path = checkpoint_dir / f"epoch_{epoch:03d}.pth"
-        torch.save(
-            {
-                "epoch": epoch,
-                "model": model.state_dict(),
-                "optimizer": optimizer.state_dict(),
-                "config": config,
-            },
-            checkpoint_path,
-        )
         mean_loss = running_loss / max(1, len(loader))
+        epoch_metrics = {
+            "epoch": epoch,
+            "train_loss": mean_loss,
+            "checkpoint": f"epoch_{epoch:03d}.pth",
+        }
+        history.append(epoch_metrics)
+
+        payload = {
+            "epoch": epoch,
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "config": config,
+            "metrics": epoch_metrics,
+            "run_dir": str(run_paths["run_dir"]),
+        }
+        checkpoint_path = checkpoint_dir / f"epoch_{epoch:03d}.pth"
+        torch.save(payload, checkpoint_path)
+        torch.save(payload, checkpoint_dir / "latest.pth")
+
+        if save_best and mean_loss < best_loss:
+            best_loss = mean_loss
+            torch.save(payload, checkpoint_dir / "best.pth")
+            epoch_metrics["best_checkpoint"] = "best.pth"
+
+        write_json(run_paths["metrics"] / "latest_train.json", epoch_metrics)
+        write_json(run_paths["metrics"] / "train_history.json", history)
+        append_log_line(train_log, f"epoch={epoch} loss={mean_loss:.6f} saved={checkpoint_path}")
         print(f"epoch={epoch} loss={mean_loss:.6f} saved={checkpoint_path}")
 
 

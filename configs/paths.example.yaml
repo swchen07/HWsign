@@ -1,4 +1,4 @@
 data_root: datasets/raw/HanSig
 manifest_dir: datasets/manifests
-checkpoint_dir: checkpoints
-output_dir: outputs
+output_dir: outputs/runs
+model_dir: models
