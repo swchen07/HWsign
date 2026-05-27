@@ -1,0 +1,29 @@
+.DS_Store
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local data and generated artifacts
+datasets/raw/*
+!datasets/raw/.gitkeep
+datasets/*/IMG_*
+datasets/**/*.HEIC
+datasets/**/*.heic
+datasets/**/*.part
+checkpoints/
+outputs/
+runs/
+logs/
+*.ckpt
+*.pth
+*.pt
+
+# Keep generated manifests small and explicit.
+datasets/manifests/*.csv
+datasets/manifests/*.jsonl
+!datasets/manifests/*.example.csv
+!datasets/manifests/.gitkeep

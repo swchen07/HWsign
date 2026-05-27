@@ -1,0 +1,25 @@
+seed: 11
+device: auto
+
+data:
+  root: datasets/raw/HanSig
+  train_manifest: datasets/manifests/hansig_train.csv
+  val_manifest: datasets/manifests/hansig_val.csv
+  num_positive: 5
+  num_negative: 5
+  input_size: [150, 220]
+  num_workers: 0
+
+model:
+  embedding_dim: 1024
+
+train:
+  batch_size: 18
+  epochs: 90
+  lr: 0.001
+  weight_decay: 0.0001
+  epsilon: 0.2
+  branch_weight: 1.0
+  amp: false
+  checkpoint_dir: checkpoints/ms_signet_hansig
+  log_interval: 20
