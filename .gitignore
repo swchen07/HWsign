@@ -10,6 +10,8 @@ __pycache__/
 # Local data and generated artifacts
 datasets/raw/*
 !datasets/raw/.gitkeep
+datasets/processed/*
+!datasets/processed/.gitkeep
 datasets/*/IMG_*
 datasets/**/*.HEIC
 datasets/**/*.heic

@@ -1,0 +1,31 @@
+seed: 11
+device: auto
+
+run:
+  name: ms_signet_csw_0116
+  output_dir: outputs/runs
+  save_best: true
+
+data:
+  project_root: .
+  manifests:
+    - datasets/manifests/csw_0116_true.csv
+    - datasets/manifests/csw_0116_fake.csv
+  num_positive: 5
+  num_negative: 5
+  input_size: [150, 220]
+  num_workers: 0
+
+model:
+  embedding_dim: 1024
+
+train:
+  batch_size: 18
+  epochs: 90
+  lr: 0.001
+  weight_decay: 0.0001
+  epsilon: 0.2
+  branch_weight: 1.0
+  amp: false
+  checkpoint_dir: null
+  log_interval: 20

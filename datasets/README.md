@@ -10,9 +10,19 @@ datasets/
 ├── raw/
 │   └── HanSig/
 │       └── ... image files ...
+├── processed/
+│   └── ... generated preprocessing outputs ...
 ├── manifests/
 └── interfaces/
 ```
+
+Use `raw/` for immutable source data and `processed/` for generated outputs
+such as JPEG conversions. Both folders are ignored by git except for `.gitkeep`
+placeholders.
+
+For `annotation_v2`, use the preparation script to copy single-signature JPGs
+into `processed/csw_0116/{true,fake}/` and write manifests with
+`image_id,image_path,label,authenticity`.
 
 HanSig filenames are parsed from names like:
 

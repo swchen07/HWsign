@@ -4,18 +4,22 @@ import argparse
 import math
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
 from src.common.run import append_log_line, create_run_layout, write_json
 from src.common.utils import ensure_dir, load_yaml, resolve_device, seed_everything
 from src.ms_signet.loss import MultiBranchCoTupletLoss
 from src.ms_signet.model import MSSigNet
-from src.ms_signet.sampler import HanSigCoTupletDataset, flatten_tuplet_batch
+from src.ms_signet.sampler import (
+    HanSigCoTupletDataset,
+    MSSigNetCoTupletDataset,
+    flatten_tuplet_batch,
+)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train MS-SigNet on HanSig manifests.")
+    parser = argparse.ArgumentParser(description="Train MS-SigNet on signature manifests.")
     parser.add_argument("--config", default="configs/ms_signet_hansig.yaml")
     return parser.parse_args()
 
@@ -41,19 +45,14 @@ def main() -> None:
     config = load_yaml(args.config)
     seed_everything(int(config.get("seed", 11)))
 
+    # initialize device, dataset, model, criterion, optimizer, and checkpoint paths
     device = resolve_device(str(config.get("device", "auto")))
     data_config = config["data"]
     train_config = config["train"]
     model_config = config["model"]
 
-    dataset = HanSigCoTupletDataset(
-        manifest_path=data_config["train_manifest"],
-        root=data_config["root"],
-        num_positive=int(data_config.get("num_positive", 5)),
-        num_negative=int(data_config.get("num_negative", 5)),
-        input_size=tuple(data_config.get("input_size", [150, 220])),
-        augment=True,
-    )
+    # build dataset and dataloader
+    dataset = build_dataset(data_config)
     loader = DataLoader(
         dataset,
         batch_size=int(train_config.get("batch_size", 18)),
@@ -62,6 +61,7 @@ def main() -> None:
         pin_memory=device.type == "cuda",
     )
 
+    # build model, loss criterion, optimizer, and scaler
     model = MSSigNet(embedding_dim=int(model_config.get("embedding_dim", 1024))).to(device)
     criterion = MultiBranchCoTupletLoss(
         epsilon=float(train_config.get("epsilon", 0.2)),
@@ -76,6 +76,7 @@ def main() -> None:
         enabled=bool(train_config.get("amp", False)) and device.type == "cuda"
     )
 
+    # set up checkpoint paths and training history
     if train_config.get("checkpoint_dir"):
         checkpoint_dir = ensure_dir(train_config["checkpoint_dir"])
         run_paths = {
@@ -94,6 +95,7 @@ def main() -> None:
     best_loss = math.inf
     print(f"run_dir={run_paths['run_dir']}")
 
+    # training loop
     for epoch in range(1, int(train_config.get("epochs", 90)) + 1):
         model.train()
         running_loss = 0.0
@@ -150,6 +152,26 @@ def main() -> None:
         write_json(run_paths["metrics"] / "train_history.json", history)
         append_log_line(train_log, f"epoch={epoch} loss={mean_loss:.6f} saved={checkpoint_path}")
         print(f"epoch={epoch} loss={mean_loss:.6f} saved={checkpoint_path}")
+
+
+def build_dataset(data_config: dict[str, object]) -> Dataset:
+    common_kwargs = {
+        "num_positive": int(data_config.get("num_positive", 5)),
+        "num_negative": int(data_config.get("num_negative", 5)),
+        "input_size": tuple(data_config.get("input_size", [150, 220])),
+        "augment": True,
+    }
+    if data_config.get("manifests"):
+        return MSSigNetCoTupletDataset(
+            manifest_paths=data_config["manifests"],
+            project_root=str(data_config.get("project_root", ".")),
+            **common_kwargs,
+        )
+    return HanSigCoTupletDataset(
+        manifest_path=data_config["train_manifest"],
+        root=data_config["root"],
+        **common_kwargs,
+    )
 
 
 if __name__ == "__main__":
